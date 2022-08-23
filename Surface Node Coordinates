@@ -1,0 +1,17 @@
+from part import *
+from section import *
+from assembly import *
+
+modelName = 'model-1'
+partName = 'part-1'
+surfaceName = 'Surf-1'
+
+surf=mdb.models[modelName].parts[partName].surfaces[surfaceName]
+
+with open("surface Nodes.csv", "w") as f:
+	f.write("x,y,z\n")
+	for i in range(len(surf.nodes)):
+		x=surf.nodes[i].coordinates[0]
+		y=surf.nodes[i].coordinates[1]
+		z=surf.nodes[i].coordinates[2]
+		f.write("{0},{1},{2}\n".format(x,y,z))
