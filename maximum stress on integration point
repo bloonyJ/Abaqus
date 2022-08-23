@@ -1,0 +1,44 @@
+odb=openOdb("Job-host.odb")
+stress=odb.steps['Step-1'].frames[1].fieldOutputs['S']
+fieldValues=stress.values
+
+max_stress=0
+for v in fieldValues:
+	if max_stress<v.mises:
+    max_stress=v.mises
+		
+
+print(max_stress)
+
+## --- If odb is not created ----------------------------------------
+# --- Single job ----------------------------------------------------
+jobname = 'job-1'
+mdb.jobs[jobname].submit(consistencyChecking=OFF)
+mdb.jobs[jobname].waitForCompletion()
+
+odb=openOdb("{0}.odb".format(jobname))
+stress=odb.steps['Step-1'].frames[1].fieldOutputs['S']
+fieldValues=stress.values
+
+max_stress=0
+for v in fieldValues:
+	if max_stress<v.mises:
+    max_stress=v.mises
+
+# --- Multiple jobs --------------------------------------------------
+for i in [1,2,3,4,5]:
+	mdb.jobs['Job-{0}'.format(i)].submit(consistencyChecking=OFF)
+	mdb.jobs['Job-{0}'.format(i)].waitForCompletion()
+
+max=[0,0,0,0,0]
+for i in [1,2,3,4,5]:
+	odb=openOdb("Job-{0}.odb".format(i))
+	stress=odb.steps['Step-1'].frames[1].fieldOutputs['S']
+	fieldValues=stress.values
+	max[i]=0
+	for v in fieldValues:
+		if max[i]<v.mises:
+			max[i]=v.mises
+
+
+print(max)
