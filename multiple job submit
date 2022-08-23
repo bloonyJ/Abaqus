@@ -1,0 +1,7 @@
+from job import *
+
+joblist=['Job-1', 'Job-2', 'Job-3']
+
+for job in joblist:
+    mdb.jobs[job].submit()
+    mdb.jobs[job].waitForCompletion()
