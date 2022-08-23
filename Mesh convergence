@@ -1,0 +1,84 @@
+'''
+This is not checked after modification. Use this code only for reference
+Mesh convergence study model_Single Part
+Original model require step, boundary conditions and loads.
+period will not be accepted in the model name
+'''
+
+modelName="solid"
+part1Name="base"
+meshSize=[5.0, 4.5, 4.0, 3.5, 3.0, 2.5, 2.0, 1.5, 1.0, 0.5]
+stepName="Step-1"
+
+#-----DO NOT MODIFY BELOW THIS LINE-----
+from part import *
+from material import *
+from section import *
+from assembly import *
+from step import *
+from interaction import *
+from load import *
+from mesh import *
+from optimization import *
+from job import *
+from sketch import *
+from visualization import *
+from connectorBehavior import *
+
+mdl=mdb.models[modelName]
+mdls=[]
+for i in range(len(meshSize)):
+	mdb.Model(name='MeshSize {0}'.format(int(meshSize[i])), objectToCopy=mdb.models[modelName])
+	mdls.append(mdb.models['MeshSize {0}'.format(int(meshSize[i]))])
+
+for i in range(len(meshSize)):
+	mdls[i].parts[part1Name].setMeshControls(algorithm=MEDIAL_AXIS, regions=mdls[i].parts[part1Name].cells.getSequenceFromMask(('[#1 ]', ), ))
+	mdls[i].parts[part1Name].seedPart(deviationFactor=0.1, minSizeFactor=0.1, size=meshSize[i])
+	mdls[i].parts[part1Name].generateMesh()
+	mdls[i].rootAssembly.regenerate()
+
+#---Job---
+for i in range(len(meshSize)):
+	mdb.Job(atTime=None, contactPrint=OFF, description='', echoPrint=OFF, 
+		explicitPrecision=SINGLE, getMemoryFromAnalysis=True, historyPrint=OFF, 
+		memory=99, memoryUnits=PERCENTAGE, model=mdls[i], modelPrint=OFF, 
+		multiprocessingMode=DEFAULT, name="Job_{0}".format(int(meshSize[i]*10)), nodalOutputPrecision=SINGLE, 
+		numCpus=4, numDomains=4, numGPUs=0, queue=None, scratch='', type=ANALYSIS, 
+		userSubroutine='', waitHours=0, waitMinutes=0)
+
+#-------------------------------------------------
+#             After all the jobs are done
+#-------------------------------------------------
+from odbAccess import *
+
+mdl=mdb.models[modelName]
+mdls=[]
+odbs=[]
+
+for i in range(len(meshSize)):
+	mdls.append(mdb.models['MeshSize {0}'.format(int(meshSize[i]*10))])
+	odbs.append(openOdb('Job_{0}.odb'.format(int(meshSize[i]*10))))
+
+#-----Write File-----
+
+with open("Mesh conv.csv", "w") as f:
+	f.write("part1, , , , \n")
+	f.write("Mesh size,nodes,elements,MAX MISES,MAX. PRIN\n")
+	for i in range(len(meshSize)):
+		base=mdls[i].parts[part1Name]
+		core=mdls[i].parts[part2Name]
+		f.write("{0},{1},{2},".format(meshSize[i], len(base.nodes), len(base.elements)))
+		misesMax=0
+		stress=odbs[i].steps[stepName].frames[-1].fieldOutputs['S'].values
+		for v in stress:
+			if v.mises>misesMax:
+				misesMax=v.mises
+		f.write("{0},".format(misesMax))
+		prinMax=0
+		stress=odbs[i].steps[stepName].frames[-1].fieldOutputs['S'].values
+		for v in stress:
+			if abs(v.maxPrincipal)>prinMax:
+				prinMax=abs(v.maxPrincipal)
+		f.write("{0},".format(prinMax))
+		f.write("\n")
+
